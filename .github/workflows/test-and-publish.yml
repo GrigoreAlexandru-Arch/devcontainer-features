@@ -46,5 +46,5 @@ jobs:
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
 
           devcontainer features publish \
-            --namespace "$OWNER_LOWER/lazyvim-devcontainer-feature" \
+            --namespace "$OWNER_LOWER/devcontainer-feature" \
             src/lazyvim
