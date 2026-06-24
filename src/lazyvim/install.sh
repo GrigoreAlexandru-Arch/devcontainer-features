@@ -24,7 +24,6 @@ ARCH=$(uname -m)
 echo "Detected architecture: $ARCH"
 
 if [ "$ARCH" = "x86_64" ]; then
-    # Matches both current (nvim-linux-x86_64) and legacy (nvim-linux64) naming
     ASSET_PATTERN="nvim-linux-x86_64\.tar\.gz|nvim-linux64\.tar\.gz"
 elif [ "$ARCH" = "aarch64" ]; then
     ASSET_PATTERN="nvim-linux-arm64\.tar\.gz"
@@ -42,10 +41,8 @@ else
     API_URL="https://api.github.com/repos/neovim/neovim/releases/tags/${NVIM_VERSION}"
 fi
 
-# 4. Fetch the specific Download URL via the GitHub API
+# 4. Fetch and install Neovim
 echo "Querying GitHub API for Neovim release: ${NVIM_VERSION}..."
-
-# We extract all download URLs and use grep to find the one matching our architecture
 DOWNLOAD_URL=$(curl -s "$API_URL" | jq -r '.assets[].browser_download_url' | grep -E "$ASSET_PATTERN" | head -n 1)
 
 if [ -z "$DOWNLOAD_URL" ]; then
@@ -54,18 +51,12 @@ if [ -z "$DOWNLOAD_URL" ]; then
 fi
 
 echo "Downloading Neovim from: $DOWNLOAD_URL"
-
-# The -f flag ensures curl fails if the URL is unreachable
 curl -LO -f "$DOWNLOAD_URL"
-
-# Extract the filename from the URL
 FILENAME=$(basename "$DOWNLOAD_URL")
 
-# 5. Extract and Symlink dynamically
 tar -C /opt -xzf "$FILENAME"
 rm "$FILENAME"
 
-# Dynamically find the extracted folder (avoids hardcoding folder names)
 EXTRACTED_DIR=$(find /opt -maxdepth 1 -name "nvim-linux*" -type d | head -n 1)
 
 if [ -z "$EXTRACTED_DIR" ]; then
@@ -75,29 +66,42 @@ fi
 
 ln -s "${EXTRACTED_DIR}/bin/nvim" /usr/local/bin/nvim
 
-# 6. Determine the target user and home directory
-if [ "${_REMOTE_USER}" = "root" ] || [ -z "${_REMOTE_USER}" ]; then
-    TARGET_USER="root"
-    TARGET_HOME="/root"
-else
-    TARGET_USER="${_REMOTE_USER}"
-    TARGET_HOME="${_REMOTE_USER_HOME:-/home/${TARGET_USER}}"
+# 5. Generate the Post-Create Bootstrap Script
+# This script will run as the remote user with full access to forwarded SSH keys/credentials
+BOOTSTRAP_SCRIPT="/usr/local/share/lazyvim-bootstrap.sh"
+
+cat <<'EOF' >${BOOTSTRAP_SCRIPT}
+#!/usr/bin/env bash
+set -e
+
+# Use the remote user's home directory
+USER_HOME=$HOME
+CONFIG_DIR="${USER_HOME}/.config/nvim"
+
+if [ -d "$CONFIG_DIR" ]; then
+    echo "Neovim configuration already exists at $CONFIG_DIR. Skipping clone."
+    exit 0
 fi
 
-echo "Setting up LazyVim for user: ${TARGET_USER} at ${TARGET_HOME}"
+echo "Cloning LazyVim configuration..."
+mkdir -p "${USER_HOME}/.config"
 
-# 7. Clone the LazyVim repository
-mkdir -p "${TARGET_HOME}/.config"
-git clone "${CONFIG_REPO}" "${TARGET_HOME}/.config/nvim"
+# We inject the CONFIG_REPO from the build step into this script
+git clone "__CONFIG_REPO__" "$CONFIG_DIR"
 
-# Remove the .git folder so the user isn't stuck inside the starter repo history
-rm -rf "${TARGET_HOME}/.config/nvim/.git"
+# Clean up .git history so the user can optionally track their own
+rm -rf "${CONFIG_DIR}/.git"
 
-# Ensure the target user owns the configuration directory
-chown -R "${TARGET_USER}:${TARGET_USER}" "${TARGET_HOME}/.config/nvim"
-
-# 8. Headless Bootstrapping
 echo "Bootstrapping LazyVim plugins headlessly..."
-su - "${TARGET_USER}" -c "nvim --headless '+Lazy! sync' +qa"
+nvim --headless '+Lazy! sync' +qa
 
 echo "LazyVim installation complete!"
+EOF
+
+# Inject the chosen repo URL into the script
+sed -i "s|__CONFIG_REPO__|${CONFIG_REPO}|g" ${BOOTSTRAP_SCRIPT}
+
+# Ensure the script is executable
+chmod +x ${BOOTSTRAP_SCRIPT}
+
+echo "Feature build step complete! Configuration will be cloned during postCreateCommand."

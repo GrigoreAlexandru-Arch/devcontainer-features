@@ -1,23 +1,24 @@
 {
-    "id": "lazyvim",
-    "version": "1.0.0",
-    "name": "Neovim & LazyVim",
-    "description": "Installs Neovim and bootstraps LazyVim headlessly for instant use.",
-    "options": {
-        "version": {
-            "type": "string",
-            "proposals": ["stable", "nightly", "v0.9.5"],
-            "default": "stable",
-            "description": "Select the Neovim release version."
-        },
-        "configRepo": {
-            "type": "string",
-            "default": "https://github.com/LazyVim/starter",
-            "description": "The Git repository containing your LazyVim configuration."
-        }
+  "id": "lazyvim",
+  "version": "1.0.0",
+  "name": "Neovim & LazyVim",
+  "description": "Installs Neovim and bootstraps LazyVim headlessly for instant use.",
+  "options": {
+    "version": {
+      "type": "string",
+      "proposals": ["stable", "nightly", "v0.9.5"],
+      "default": "stable",
+      "description": "Select the Neovim release version."
     },
-    "installsAfter": [
-        "ghcr.io/devcontainers/features/git",
-        "ghcr.io/devcontainers/features/common-utils"
-    ]
+    "configRepo": {
+      "type": "string",
+      "default": "https://github.com/LazyVim/starter",
+      "description": "The Git repository containing your LazyVim configuration (SSH or HTTPS)."
+    }
+  },
+  "installsAfter": [
+    "ghcr.io/devcontainers/features/git",
+    "ghcr.io/devcontainers/features/common-utils"
+  ],
+  "postCreateCommand": "bash /usr/local/share/lazyvim-bootstrap.sh"
 }
