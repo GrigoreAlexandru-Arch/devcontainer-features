@@ -6,7 +6,7 @@
   "options": {
     "version": {
       "type": "string",
-      "proposals": ["stable", "nightly", "v0.9.5"],
+      "proposals": ["stable", "nightly"],
       "default": "stable",
       "description": "Select the Neovim release version."
     },

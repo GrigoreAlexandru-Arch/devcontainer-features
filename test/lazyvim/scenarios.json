@@ -1,0 +1,14 @@
+{
+  "version_stable": {
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "features": {
+      "lazyvim": { "version": "stable" }
+    }
+  },
+  "version_nightly": {
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "features": {
+      "lazyvim": { "version": "nightly" }
+    }
+  }
+}
