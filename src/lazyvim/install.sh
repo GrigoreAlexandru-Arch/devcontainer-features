@@ -86,6 +86,12 @@ fi
 echo "Cloning LazyVim configuration..."
 mkdir -p "${USER_HOME}/.config"
 
+# --- Add GitHub to known_hosts to prevent verification prompt ---
+mkdir -p "${USER_HOME}/.ssh"
+chmod 700 "${USER_HOME}/.ssh"
+ssh-keyscan -t rsa github.com >> "${USER_HOME}/.ssh/known_hosts" 2>/dev/null
+# -----------------------------------------------------------------------
+
 # We inject the CONFIG_REPO from the build step into this script
 git clone "__CONFIG_REPO__" "$CONFIG_DIR"
 
