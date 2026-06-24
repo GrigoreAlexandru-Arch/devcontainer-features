@@ -1,0 +1,50 @@
+name: Test and Publish Devcontainer Feature
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (Required for Devcontainer CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-node-version: "20"
+
+      - name: Install Dev Containers CLI
+        run: npm install -g @devcontainers/cli
+
+      - name: Run Devcontainer Feature Tests
+        run: |
+          devcontainer features test \
+            -f lazyvim \
+            --base-image mcr.microsoft.com/devcontainers/base:ubuntu \
+            .
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Feature to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+
+          devcontainer features publish \
+            --namespace "$OWNER_LOWER/lazyvim-devcontainer-feature" \
+            src/lazyvim
