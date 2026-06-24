@@ -17,10 +17,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js (Required for Devcontainer CLI)
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-node-version: "20"
+          node-version: "24"
 
       - name: Install Dev Containers CLI
         run: npm install -g @devcontainers/cli
