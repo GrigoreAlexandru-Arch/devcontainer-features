@@ -3,7 +3,16 @@
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "features": {
       "sshd": {
-        "authorizedKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOm3A4NV7K9wlZ9C49603vW249Al9f/zBc9P7rRz1XYZ test-key-1\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOzXYZ... test-key-2"
+        "authorizedKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKgTrCN/s6F+cPftbaTbBuVceVWqjyYIdNCGyO/XwIHb arch@Desktop"
+      }
+    }
+  },
+  "change_port_test": {
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "features": {
+      "sshd": {
+        "authorizedKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKgTrCN/s6F+cPftbaTbBuVceVWqjyYIdNCGyO/XwIHb arch@Desktop",
+        "sshPort": "2222"
       }
     }
   }

@@ -1,0 +1,20 @@
+{
+  "name": "${templateProperties:name}",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/grigorealexandru-arch/devcontainer-features/lazyvim:latest": {
+      "configRepo": "${options:lazyVimConfigRepo}"
+    },
+    "ghcr.io/grigorealexandru-arch/devcontainer-features/sshd:latest": {
+      "authorizedKeys": "${options:sshPublicKey}",
+      "sshPort": "2222"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "os-provided"
+    },
+    "ghcr.io/devcontainers/features/common-utils:1": {
+      "version": "latest"
+    }
+  },
+  "appPort": ["2222:2222"]
+}

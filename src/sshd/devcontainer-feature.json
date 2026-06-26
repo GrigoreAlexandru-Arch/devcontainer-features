@@ -1,8 +1,8 @@
 {
   "id": "sshd",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "name": "SSH Server",
-  "description": "Adds SSH access to a devcontainer with support for agent forwarding.",
+  "description": "Adds SSH access to a devcontainer with support for agent forwarding and customizable ports.",
   "options": {
     "authorizedKeys": {
       "type": "string",
@@ -13,6 +13,11 @@
       "type": "string",
       "default": "automatic",
       "description": "User allowed to log in."
+    },
+    "sshPort": {
+      "type": "string",
+      "default": "22",
+      "description": "The port the SSH server should listen on."
     }
   },
   "postStartCommand": "/usr/local/share/devcontainer-sshd/start-sshd.sh"

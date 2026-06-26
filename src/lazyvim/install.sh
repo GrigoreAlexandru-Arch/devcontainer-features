@@ -66,47 +66,44 @@ fi
 
 ln -s "${EXTRACTED_DIR}/bin/nvim" /usr/local/bin/nvim
 
-# 5. Generate the Post-Create Bootstrap Script
-# This script will run as the remote user with full access to forwarded SSH keys/credentials
-BOOTSTRAP_SCRIPT="/usr/local/share/lazyvim-bootstrap.sh"
+# 5. Determine Target User and Home Directory for Build Time
+# Devcontainers provide $_REMOTE_USER and $_REMOTE_USER_HOME during features execution
+TARGET_USER=${_REMOTE_USER:-"root"}
+TARGET_HOME=${_REMOTE_USER_HOME:-$HOME}
+CONFIG_DIR="${TARGET_HOME}/.config/nvim"
 
-cat <<'EOF' >${BOOTSTRAP_SCRIPT}
-#!/usr/bin/env bash
-set -e
-
-# Use the remote user's home directory
-USER_HOME=$HOME
-CONFIG_DIR="${USER_HOME}/.config/nvim"
+echo "Targeting user: ${TARGET_USER} with home: ${TARGET_HOME}"
 
 if [ -d "$CONFIG_DIR" ]; then
-    echo "Neovim configuration already exists at $CONFIG_DIR. Skipping clone."
+    echo "Neovim configuration already exists at $CONFIG_DIR. Skipping setup."
     exit 0
 fi
 
+# 6. Setup Configuration and Install Plugins
 echo "Cloning LazyVim configuration..."
-mkdir -p "${USER_HOME}/.config"
+mkdir -p "${TARGET_HOME}/.config"
 
-mkdir -p "${USER_HOME}/.ssh"
-chmod 700 "${USER_HOME}/.ssh"
-ssh-keyscan github.com >> "${USER_HOME}/.ssh/known_hosts" 2>/dev/null
-# -----------------------------------------------------------------------
+# Ensure GitHub is in known_hosts to prevent interactive prompts
+mkdir -p "${TARGET_HOME}/.ssh"
+chmod 700 "${TARGET_HOME}/.ssh"
+ssh-keyscan github.com >>"${TARGET_HOME}/.ssh/known_hosts" 2>/dev/null
 
-# We inject the CONFIG_REPO from the build step into this script
-git clone "__CONFIG_REPO__" "$CONFIG_DIR"
+# Clone the repository
+git clone "${CONFIG_REPO}" "$CONFIG_DIR"
 
 # Clean up .git history so the user can optionally track their own
 rm -rf "${CONFIG_DIR}/.git"
 
+# Set correct ownership before running nvim headless sync so it writes to the right paths
+chown -R "${TARGET_USER}:${TARGET_USER}" "${TARGET_HOME}/.config" "${TARGET_HOME}/.ssh"
+
 echo "Bootstrapping LazyVim plugins headlessly..."
-nvim --headless '+Lazy! sync' +qa
+# Run the plugin sync as the target user to ensure paths (~/.local/share/nvim)
+# and permissions are set properly for development.
+if [ "${TARGET_USER}" != "root" ]; then
+    su - "${TARGET_USER}" -c "nvim --headless '+Lazy! sync' +qa"
+else
+    nvim --headless '+Lazy! sync' +qa
+fi
 
-echo "LazyVim installation complete!"
-EOF
-
-# Inject the chosen repo URL into the script
-sed -i "s|__CONFIG_REPO__|${CONFIG_REPO}|g" ${BOOTSTRAP_SCRIPT}
-
-# Ensure the script is executable
-chmod +x ${BOOTSTRAP_SCRIPT}
-
-echo "Feature build step complete! Configuration will be cloned during postCreateCommand."
+echo "LazyVim installation and build-time feature setup complete!"

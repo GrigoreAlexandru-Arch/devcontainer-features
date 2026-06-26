@@ -36,7 +36,7 @@ chown vscode:vscode /tmp/dummy_key
 
 # 7. Attempt an SSH connection to localhost as the vscode user
 check "ssh connection to localhost succeeds" \
-    ssh -i /tmp/dummy_key \
+    ssh -p 2222 -i /tmp/dummy_key \
     -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null \
     vscode@localhost "echo 'SSH_SUCCESS'" | grep -q 'SSH_SUCCESS'

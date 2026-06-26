@@ -1,0 +1,18 @@
+{
+  "id": "remote-lazyvim",
+  "version": "1.0.0",
+  "name": "Template for remote dev with LazyVim and SSHD",
+  "description": "An Ubuntu-based devcontainer pre-configured with LazyVim, SSH, Git, and common utilities.",
+  "options": {
+    "sshPublicKey": {
+      "type": "string",
+      "description": "The SSH public key to add to authorized_keys (defaults to local SSH_PUBLIC_KEY env var if left blank).",
+      "default": "${localEnv:SSH_PUBLIC_KEY}"
+    },
+    "lazyVimConfigRepo": {
+      "type": "string",
+      "description": "The Git repository URL for your LazyVim configuration.",
+      "default": "https://github.com/LazyVim/starter"
+    }
+  }
+}

@@ -19,6 +19,5 @@
   "installsAfter": [
     "ghcr.io/devcontainers/features/git",
     "ghcr.io/devcontainers/features/common-utils"
-  ],
-  "postCreateCommand": "bash /usr/local/share/lazyvim-bootstrap.sh"
+  ]
 }
