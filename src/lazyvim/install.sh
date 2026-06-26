@@ -88,14 +88,18 @@ mkdir -p "${TARGET_HOME}/.ssh"
 chmod 700 "${TARGET_HOME}/.ssh"
 ssh-keyscan github.com >>"${TARGET_HOME}/.ssh/known_hosts" 2>/dev/null
 
-# Clone the repository
-git clone "${CONFIG_REPO}" "$CONFIG_DIR"
-
-# Clean up .git history so the user can optionally track their own
-rm -rf "${CONFIG_DIR}/.git"
-
-# Set correct ownership before running nvim headless sync so it writes to the right paths
+# Set correct ownership BEFORE cloning so the target user can write to these directories
 chown -R "${TARGET_USER}:${TARGET_USER}" "${TARGET_HOME}/.config" "${TARGET_HOME}/.ssh"
+
+# Clone the repository as the target user
+echo "Cloning repository as ${TARGET_USER}..."
+if [ "${TARGET_USER}" != "root" ]; then
+    su - "${TARGET_USER}" -c "git clone ${CONFIG_REPO} ${CONFIG_DIR}"
+    su - "${TARGET_USER}" -c "rm -rf ${CONFIG_DIR}/.git"
+else
+    git clone "${CONFIG_REPO}" "$CONFIG_DIR"
+    rm -rf "${CONFIG_DIR}/.git"
+fi
 
 echo "Bootstrapping LazyVim plugins headlessly..."
 # Run the plugin sync as the target user to ensure paths (~/.local/share/nvim)
