@@ -101,19 +101,6 @@ gzip -d $(basename "$TS_LATEST_URL")
 chmod +x "tree-sitter-linux-${TS_ARCH}"
 mv "tree-sitter-linux-${TS_ARCH}" /usr/local/bin/tree-sitter
 
-# Download and setup win32yank (for WSL clipboard integration)
-if [ "$ARCH" = "x86_64" ]; then
-    echo "Fetching win32yank for WSL clipboard support..."
-    WIN32YANK_URL=$(curl -s https://api.github.com/repos/equalsraf/win32yank/releases/latest | jq -r ".assets[].browser_download_url" | grep "${WIN32YANK_ARCH}\.zip")
-    curl -LO -f "$WIN32YANK_URL"
-    unzip -q -o $(basename "$WIN32YANK_URL") -d win32yank-tmp
-    chmod +x win32yank-tmp/win32yank.exe
-    mv win32yank-tmp/win32yank.exe /usr/local/bin/win32yank.exe
-    rm -rf win32yank-tmp $(basename "$WIN32YANK_URL")
-else
-    echo "Skipping win32yank (not officially published for $ARCH)."
-fi
-
 # 6. Determine Target User and Home Directory for Build Time
 TARGET_USER=${_REMOTE_USER:-"root"}
 TARGET_HOME=${_REMOTE_USER_HOME:-$HOME}
@@ -142,10 +129,8 @@ chown -R "${TARGET_USER}:${TARGET_USER}" "${TARGET_HOME}/.config" "${TARGET_HOME
 echo "Cloning repository as ${TARGET_USER}..."
 if [ "${TARGET_USER}" != "root" ]; then
     su - "${TARGET_USER}" -c "git clone ${CONFIG_REPO} ${CONFIG_DIR}"
-    su - "${TARGET_USER}" -c "rm -rf ${CONFIG_DIR}/.git"
 else
     git clone "${CONFIG_REPO}" "$CONFIG_DIR"
-    rm -rf "${CONFIG_DIR}/.git"
 fi
 
 echo "Bootstrapping LazyVim plugins headlessly..."
