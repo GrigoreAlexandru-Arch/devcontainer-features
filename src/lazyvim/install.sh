@@ -30,7 +30,35 @@ apt-get install -y --no-install-recommends \
     sqlite3 \
     libsqlite3-dev
 
-# 2. Determine Architecture
+# 2. Helper function to fetch GitHub assets safely and avoid rate limits
+fetch_github_asset() {
+    local api_url=$1
+    local pattern=$2
+
+    local CURL_OPTS=("-s")
+    if [ -n "${GITHUB_TOKEN}" ]; then
+        CURL_OPTS+=("-H" "Authorization: Bearer ${GITHUB_TOKEN}")
+    fi
+
+    local response
+    response=$(curl "${CURL_OPTS[@]}" "$api_url")
+
+    # If the response contains a "message" field, it's likely an API error (e.g., rate limiting)
+    local error_msg
+    error_msg=$(echo "$response" | jq -r '.message // empty')
+
+    if [ -n "$error_msg" ]; then
+        echo "Error: GitHub API request failed." >&2
+        echo "API Response: $error_msg" >&2
+        echo "Target URL: $api_url" >&2
+        exit 1
+    fi
+
+    # Safely parse the assets array
+    echo "$response" | jq -r '.assets[].browser_download_url // empty' | grep -E "$pattern" | head -n 1
+}
+
+# 3. Determine Architecture
 ARCH=$(uname -m)
 echo "Detected architecture: $ARCH"
 
@@ -43,13 +71,12 @@ elif [ "$ARCH" = "aarch64" ]; then
     ASSET_PATTERN="nvim-linux-arm64\.tar\.gz"
     FZF_ARCH="arm64"
     TS_ARCH="arm64"
-    # win32yank releases are primarily x86/x64; we'll skip it on ARM later
 else
     echo "Unsupported architecture: $ARCH"
     exit 1
 fi
 
-# 3. Determine the GitHub API Endpoint for Neovim
+# 4. Determine the GitHub API Endpoint for Neovim
 if [ "${NVIM_VERSION}" = "stable" ]; then
     API_URL="https://api.github.com/repos/neovim/neovim/releases/latest"
 elif [ "${NVIM_VERSION}" = "nightly" ]; then
@@ -58,9 +85,9 @@ else
     API_URL="https://api.github.com/repos/neovim/neovim/releases/tags/${NVIM_VERSION}"
 fi
 
-# 4. Fetch and install Neovim
+# 5. Fetch and install Neovim
 echo "Querying GitHub API for Neovim release: ${NVIM_VERSION}..."
-DOWNLOAD_URL=$(curl -s "$API_URL" | jq -r '.assets[].browser_download_url' | grep -E "$ASSET_PATTERN" | head -n 1)
+DOWNLOAD_URL=$(fetch_github_asset "$API_URL" "$ASSET_PATTERN")
 
 if [ -z "$DOWNLOAD_URL" ]; then
     echo "Error: Could not find a valid Neovim asset for architecture $ARCH in release ${NVIM_VERSION}."
@@ -83,12 +110,12 @@ fi
 
 ln -s "${EXTRACTED_DIR}/bin/nvim" /usr/local/bin/nvim
 
-# 5. Install External Binaries (FZF, Tree-Sitter, Win32Yank)
+# 6. Install External Binaries (FZF, Tree-Sitter)
 echo "Installing external binaries..."
 
 # Download and setup fzf
 echo "Fetching latest fzf release..."
-FZF_LATEST_URL=$(curl -s https://api.github.com/repos/junegunn/fzf/releases/latest | jq -r ".assets[].browser_download_url" | grep "linux_${FZF_ARCH}\.tar\.gz")
+FZF_LATEST_URL=$(fetch_github_asset "https://api.github.com/repos/junegunn/fzf/releases/latest" "linux_${FZF_ARCH}\.tar\.gz")
 curl -LO -f "$FZF_LATEST_URL"
 tar -xzf $(basename "$FZF_LATEST_URL")
 mv fzf /usr/local/bin/
@@ -96,13 +123,13 @@ rm $(basename "$FZF_LATEST_URL")
 
 # Download and setup tree-sitter-cli
 echo "Fetching latest tree-sitter release..."
-TS_LATEST_URL=$(curl -s https://api.github.com/repos/tree-sitter/tree-sitter/releases/latest | jq -r ".assets[].browser_download_url" | grep "tree-sitter-linux-${TS_ARCH}\.gz")
+TS_LATEST_URL=$(fetch_github_asset "https://api.github.com/repos/tree-sitter/tree-sitter/releases/latest" "tree-sitter-linux-${TS_ARCH}\.gz")
 curl -LO -f "$TS_LATEST_URL"
 gzip -d $(basename "$TS_LATEST_URL")
 chmod +x "tree-sitter-linux-${TS_ARCH}"
 mv "tree-sitter-linux-${TS_ARCH}" /usr/local/bin/tree-sitter
 
-# 6. Determine Target User and Home Directory for Build Time
+# 7. Determine Target User and Home Directory for Build Time
 TARGET_USER=${_REMOTE_USER:-"root"}
 TARGET_HOME=${_REMOTE_USER_HOME:-$HOME}
 CONFIG_DIR="${TARGET_HOME}/.config/nvim"
@@ -114,7 +141,7 @@ if [ -d "$CONFIG_DIR" ]; then
     exit 0
 fi
 
-# 7. Setup Configuration and Install Plugins
+# 8. Setup Configuration and Install Plugins
 echo "Cloning LazyVim configuration..."
 mkdir -p "${TARGET_HOME}/.config"
 
@@ -134,7 +161,7 @@ else
     git clone "${CONFIG_REPO}" "$CONFIG_DIR"
 fi
 
-# 8. Handle LazyVim Extras
+# 9. Handle LazyVim Extras
 if [ -n "$EXTRAS" ]; then
     echo "Configuring LazyVim extras: $EXTRAS"
     LAZYVIM_JSON="${CONFIG_DIR}/lazyvim.json"
