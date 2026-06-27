@@ -1,23 +1,31 @@
 {
-  "id": "lazyvim",
-  "version": "1.0.0",
-  "name": "Neovim & LazyVim",
-  "description": "Installs Neovim and bootstraps LazyVim headlessly for instant use.",
-  "options": {
-    "version": {
-      "type": "string",
-      "proposals": ["stable", "nightly"],
-      "default": "stable",
-      "description": "Select the Neovim release version."
+    "id": "lazyvim",
+    "version": "1.0.0",
+    "name": "Neovim & LazyVim",
+    "description": "Installs Neovim and bootstraps LazyVim headlessly for instant use.",
+    "options": {
+        "version": {
+            "type": "string",
+            "proposals": [
+                "stable",
+                "nightly"
+            ],
+            "default": "stable",
+            "description": "Select the Neovim release version."
+        },
+        "configRepo": {
+            "type": "string",
+            "default": "https://github.com/LazyVim/starter",
+            "description": "The Git repository containing your LazyVim configuration (SSH or HTTPS)."
+        },
+        "extras": {
+            "type": "string",
+            "default": "",
+            "description": "Comma-separated list of LazyVim extras to enable (e.g., lazyvim.plugins.extras.lang.typescript,lazyvim.plugins.extras.coding.copilot)."
+        }
     },
-    "configRepo": {
-      "type": "string",
-      "default": "https://github.com/LazyVim/starter",
-      "description": "The Git repository containing your LazyVim configuration (SSH or HTTPS)."
-    }
-  },
-  "installsAfter": [
-    "ghcr.io/devcontainers/features/git",
-    "ghcr.io/devcontainers/features/common-utils"
-  ]
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/git",
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
 }

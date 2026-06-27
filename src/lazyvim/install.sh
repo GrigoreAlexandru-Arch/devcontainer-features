@@ -4,6 +4,7 @@ set -e
 # Fetch options from devcontainer-feature.json
 NVIM_VERSION=${VERSION:-"stable"}
 CONFIG_REPO=${CONFIGREPO:-"https://github.com/LazyVim/starter"}
+EXTRAS=${EXTRAS:-""}
 
 echo "Activating feature 'LazyVim'"
 
@@ -131,6 +132,24 @@ if [ "${TARGET_USER}" != "root" ]; then
     su - "${TARGET_USER}" -c "git clone ${CONFIG_REPO} ${CONFIG_DIR}"
 else
     git clone "${CONFIG_REPO}" "$CONFIG_DIR"
+fi
+
+# 8. Handle LazyVim Extras
+if [ -n "$EXTRAS" ]; then
+    echo "Configuring LazyVim extras: $EXTRAS"
+    LAZYVIM_JSON="${CONFIG_DIR}/lazyvim.json"
+
+    # Convert comma-separated string to JSON array (stripping spaces) and map to { "extras": [...] }
+    if [ ! -f "$LAZYVIM_JSON" ]; then
+        echo "$EXTRAS" | jq -R -c 'split(",") | map(select(length > 0) | sub("^\\s+";"") | sub("\\s+$";"")) | {extras: .}' >"$LAZYVIM_JSON"
+    else
+        # If lazyvim.json already exists in the cloned repo, append and keep unique items
+        EXTRAS_ARRAY=$(echo "$EXTRAS" | jq -R -c 'split(",") | map(select(length > 0) | sub("^\\s+";"") | sub("\\s+$";""))')
+        jq --argjson new "$EXTRAS_ARRAY" '.extras = ((.extras // []) + $new | unique)' "$LAZYVIM_JSON" >"${LAZYVIM_JSON}.tmp" && mv "${LAZYVIM_JSON}.tmp" "$LAZYVIM_JSON"
+    fi
+
+    # Fix ownership of lazyvim.json
+    chown "${TARGET_USER}:${TARGET_USER}" "$LAZYVIM_JSON"
 fi
 
 echo "Bootstrapping LazyVim plugins headlessly..."
