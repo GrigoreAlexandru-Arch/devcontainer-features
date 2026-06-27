@@ -8,6 +8,7 @@ CONFIG_REPO=${CONFIGREPO:-"https://github.com/LazyVim/starter"}
 echo "Activating feature 'LazyVim'"
 
 # 1. Install System Dependencies
+echo "Installing system dependencies..."
 apt-get update
 apt-get install -y --no-install-recommends \
     git \
@@ -17,7 +18,16 @@ apt-get install -y --no-install-recommends \
     ripgrep \
     fd-find \
     xclip \
-    jq
+    jq \
+    unzip \
+    gzip \
+    python3 \
+    python3-pip \
+    python3-venv \
+    python3-pynvim \
+    luarocks \
+    sqlite3 \
+    libsqlite3-dev
 
 # 2. Determine Architecture
 ARCH=$(uname -m)
@@ -25,14 +35,20 @@ echo "Detected architecture: $ARCH"
 
 if [ "$ARCH" = "x86_64" ]; then
     ASSET_PATTERN="nvim-linux-x86_64\.tar\.gz|nvim-linux64\.tar\.gz"
+    FZF_ARCH="amd64"
+    TS_ARCH="x64"
+    WIN32YANK_ARCH="x64"
 elif [ "$ARCH" = "aarch64" ]; then
     ASSET_PATTERN="nvim-linux-arm64\.tar\.gz"
+    FZF_ARCH="arm64"
+    TS_ARCH="arm64"
+    # win32yank releases are primarily x86/x64; we'll skip it on ARM later
 else
     echo "Unsupported architecture: $ARCH"
     exit 1
 fi
 
-# 3. Determine the GitHub API Endpoint
+# 3. Determine the GitHub API Endpoint for Neovim
 if [ "${NVIM_VERSION}" = "stable" ]; then
     API_URL="https://api.github.com/repos/neovim/neovim/releases/latest"
 elif [ "${NVIM_VERSION}" = "nightly" ]; then
@@ -66,8 +82,39 @@ fi
 
 ln -s "${EXTRACTED_DIR}/bin/nvim" /usr/local/bin/nvim
 
-# 5. Determine Target User and Home Directory for Build Time
-# Devcontainers provide $_REMOTE_USER and $_REMOTE_USER_HOME during features execution
+# 5. Install External Binaries (FZF, Tree-Sitter, Win32Yank)
+echo "Installing external binaries..."
+
+# Download and setup fzf
+echo "Fetching latest fzf release..."
+FZF_LATEST_URL=$(curl -s https://api.github.com/repos/junegunn/fzf/releases/latest | jq -r ".assets[].browser_download_url" | grep "linux_${FZF_ARCH}\.tar\.gz")
+curl -LO -f "$FZF_LATEST_URL"
+tar -xzf $(basename "$FZF_LATEST_URL")
+mv fzf /usr/local/bin/
+rm $(basename "$FZF_LATEST_URL")
+
+# Download and setup tree-sitter-cli
+echo "Fetching latest tree-sitter release..."
+TS_LATEST_URL=$(curl -s https://api.github.com/repos/tree-sitter/tree-sitter/releases/latest | jq -r ".assets[].browser_download_url" | grep "tree-sitter-linux-${TS_ARCH}\.gz")
+curl -LO -f "$TS_LATEST_URL"
+gzip -d $(basename "$TS_LATEST_URL")
+chmod +x "tree-sitter-linux-${TS_ARCH}"
+mv "tree-sitter-linux-${TS_ARCH}" /usr/local/bin/tree-sitter
+
+# Download and setup win32yank (for WSL clipboard integration)
+if [ "$ARCH" = "x86_64" ]; then
+    echo "Fetching win32yank for WSL clipboard support..."
+    WIN32YANK_URL=$(curl -s https://api.github.com/repos/equalsraf/win32yank/releases/latest | jq -r ".assets[].browser_download_url" | grep "${WIN32YANK_ARCH}\.zip")
+    curl -LO -f "$WIN32YANK_URL"
+    unzip -q -o $(basename "$WIN32YANK_URL") -d win32yank-tmp
+    chmod +x win32yank-tmp/win32yank.exe
+    mv win32yank-tmp/win32yank.exe /usr/local/bin/win32yank.exe
+    rm -rf win32yank-tmp $(basename "$WIN32YANK_URL")
+else
+    echo "Skipping win32yank (not officially published for $ARCH)."
+fi
+
+# 6. Determine Target User and Home Directory for Build Time
 TARGET_USER=${_REMOTE_USER:-"root"}
 TARGET_HOME=${_REMOTE_USER_HOME:-$HOME}
 CONFIG_DIR="${TARGET_HOME}/.config/nvim"
@@ -79,7 +126,7 @@ if [ -d "$CONFIG_DIR" ]; then
     exit 0
 fi
 
-# 6. Setup Configuration and Install Plugins
+# 7. Setup Configuration and Install Plugins
 echo "Cloning LazyVim configuration..."
 mkdir -p "${TARGET_HOME}/.config"
 
